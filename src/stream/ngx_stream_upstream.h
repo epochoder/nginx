@@ -140,8 +140,6 @@ typedef struct {
     size_t                             upload_rate;
     size_t                             download_rate;
 
-    ngx_str_t                          ssl_name;
-
     ngx_stream_upstream_srv_conf_t    *upstream;
     ngx_stream_upstream_resolved_t    *resolved;
     ngx_stream_upstream_state_t       *state;
