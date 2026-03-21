@@ -1,0 +1,12 @@
+language: en-US
+reviews:
+  profile: assertive           # 'chill' or 'assertive'
+  auto_review:
+    enabled: true
+    drafts: false
+  path_instructions:
+    - path: "src/os/**"
+      instructions: "Focus on thread safety, POSIX compliance, and platform-specific behavior for Solaris."
+  path_filters:
+    - "!**/*.md"               # Exclude markdown files from review
+tone_instructions: "Be concise and focus on correctness."
