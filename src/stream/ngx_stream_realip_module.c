@@ -112,10 +112,6 @@ ngx_stream_realip_handler(ngx_stream_session_t *s)
         return NGX_DECLINED;
     }
 
-    if (ngx_cidr_match(c->sockaddr, rscf->from) != NGX_OK) {
-        return NGX_DECLINED;
-    }
-
     if (ngx_parse_addr(c->pool, &addr, c->proxy_protocol->src_addr.data,
                        c->proxy_protocol->src_addr.len)
         != NGX_OK)
@@ -124,6 +120,10 @@ ngx_stream_realip_handler(ngx_stream_session_t *s)
     }
 
     ngx_inet_set_port(addr.sockaddr, c->proxy_protocol->src_port);
+
+    if (ngx_cidr_match(addr.sockaddr, rscf->from) == NGX_OK) {
+        return NGX_DECLINED;
+    }
 
     return ngx_stream_realip_set_addr(s, &addr);
 }
