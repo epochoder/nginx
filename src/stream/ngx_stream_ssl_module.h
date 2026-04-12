@@ -19,11 +19,14 @@ typedef struct {
 
     ngx_flag_t        prefer_server_ciphers;
     ngx_flag_t        certificate_compression;
+    ngx_flag_t        early_data;
     ngx_flag_t        reject_handshake;
 
     ngx_ssl_t         ssl;
 
     ngx_uint_t        protocols;
+
+    size_t            buffer_size;
 
     ngx_uint_t        verify;
     ngx_uint_t        verify_depth;

@@ -14,7 +14,11 @@ typedef ngx_int_t (*ngx_ssl_variable_handler_pt)(ngx_connection_t *c,
     ngx_pool_t *pool, ngx_str_t *s);
 
 
-#define NGX_DEFAULT_CIPHERS     "HIGH:!aNULL:!MD5"
+#define NGX_DEFAULT_CIPHERS                                                   \
+    "ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:"             \
+    "ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305:"             \
+    "ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:"             \
+    "!aNULL:!eNULL:!MD5:!PSK"
 #define NGX_DEFAULT_ECDH_CURVE  "auto"
 
 
@@ -308,6 +312,20 @@ static ngx_command_t  ngx_stream_ssl_commands[] = {
       offsetof(ngx_stream_ssl_srv_conf_t, reject_handshake),
       NULL },
 
+    { ngx_string("ssl_buffer_size"),
+      NGX_STREAM_MAIN_CONF|NGX_STREAM_SRV_CONF|NGX_CONF_TAKE1,
+      ngx_conf_set_size_slot,
+      NGX_STREAM_SRV_CONF_OFFSET,
+      offsetof(ngx_stream_ssl_srv_conf_t, buffer_size),
+      NULL },
+
+    { ngx_string("ssl_early_data"),
+      NGX_STREAM_MAIN_CONF|NGX_STREAM_SRV_CONF|NGX_CONF_FLAG,
+      ngx_conf_set_flag_slot,
+      NGX_STREAM_SRV_CONF_OFFSET,
+      offsetof(ngx_stream_ssl_srv_conf_t, early_data),
+      NULL },
+
     { ngx_string("ssl_alpn"),
       NGX_STREAM_MAIN_CONF|NGX_STREAM_SRV_CONF|NGX_CONF_1MORE,
       ngx_stream_ssl_alpn,
@@ -372,6 +390,10 @@ static ngx_stream_variable_t  ngx_stream_ssl_vars[] = {
 
     { ngx_string("ssl_session_reused"), NULL, ngx_stream_ssl_variable,
       (uintptr_t) ngx_ssl_get_session_reused, NGX_STREAM_VAR_CHANGEABLE, 0 },
+
+    { ngx_string("ssl_early_data"), NULL, ngx_stream_ssl_variable,
+      (uintptr_t) ngx_ssl_get_early_data,
+      NGX_STREAM_VAR_CHANGEABLE|NGX_STREAM_VAR_NOCACHEABLE, 0 },
 
     { ngx_string("ssl_server_name"), NULL, ngx_stream_ssl_variable,
       (uintptr_t) ngx_ssl_get_server_name, NGX_STREAM_VAR_CHANGEABLE, 0 },
@@ -907,7 +929,9 @@ ngx_stream_ssl_create_srv_conf(ngx_conf_t *cf)
     sscf->conf_commands = NGX_CONF_UNSET_PTR;
     sscf->prefer_server_ciphers = NGX_CONF_UNSET;
     sscf->certificate_compression = NGX_CONF_UNSET;
+    sscf->early_data = NGX_CONF_UNSET;
     sscf->reject_handshake = NGX_CONF_UNSET;
+    sscf->buffer_size = NGX_CONF_UNSET_SIZE;
     sscf->verify = NGX_CONF_UNSET_UINT;
     sscf->verify_depth = NGX_CONF_UNSET_UINT;
     sscf->builtin_session_cache = NGX_CONF_UNSET;
@@ -943,7 +967,11 @@ ngx_stream_ssl_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
     ngx_conf_merge_value(conf->certificate_compression,
                          prev->certificate_compression, 0);
 
+    ngx_conf_merge_value(conf->early_data, prev->early_data, 0);
     ngx_conf_merge_value(conf->reject_handshake, prev->reject_handshake, 0);
+
+    ngx_conf_merge_size_value(conf->buffer_size, prev->buffer_size,
+                         NGX_SSL_BUFSIZE);
 
     ngx_conf_merge_bitmask_value(conf->protocols, prev->protocols,
                          (NGX_CONF_BITMASK_SET|NGX_SSL_DEFAULT_PROTOCOLS));
@@ -1197,6 +1225,12 @@ ngx_stream_ssl_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
         {
             return NGX_CONF_ERROR;
         }
+    }
+
+    conf->ssl.buffer_size = conf->buffer_size;
+
+    if (ngx_ssl_early_data(cf, &conf->ssl, conf->early_data) != NGX_OK) {
+        return NGX_CONF_ERROR;
     }
 
     if (ngx_ssl_conf_commands(cf, &conf->ssl, conf->conf_commands) != NGX_OK) {
