@@ -6,6 +6,11 @@ reviews:
   drafts: false
   high_level_summary: true
   sequence_diagrams: true
+  review_details: true
+  assess_linked_issues: true
+  pre_merge_checks:
+    issue_assessment:
+      mode: "warning"
 
 knowledge_base:
   linear:
@@ -14,3 +19,6 @@ knowledge_base:
       - "CS"
 chat:
   auto_reply: true
+  integrations:
+    linear:
+      usage: "enabled"
