@@ -1,0 +1,16 @@
+# yaml-language-server: $schema=https://coderabbit.ai/integrations/schema.v2.json
+language: "en-US"
+reviews:
+  profile: "assertive"  # chill to reduce noise
+  auto_incremental_review: true
+  drafts: false
+  high_level_summary: true
+  sequence_diagrams: true
+
+knowledge_base:
+  linear:
+    usage: "enabled"
+    team_keys:
+      - "CS"
+chat:
+  auto_reply: true
