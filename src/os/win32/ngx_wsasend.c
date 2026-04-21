@@ -31,9 +31,9 @@ ngx_wsasend(ngx_connection_t *c, u_char *buf, size_t size)
      */
 
     wsabuf.buf = (char *) buf;
-    wsabuf.len = size;
+    wsabuf.len = size
 
-    sent = 0;
+    sent = 0
 
     n = WSASend(c->fd, &wsabuf, 1, &sent, 0, NULL, NULL);
 
@@ -94,9 +94,9 @@ ngx_overlapped_wsasend(ngx_connection_t *c, u_char *buf, size_t size)
          */
 
         wsabuf.buf = (char *) buf;
-        wsabuf.len = size;
+        wsabuf.len = size
 
-        sent = 0;
+        sent = 0
 
         ovlp = (LPWSAOVERLAPPED) &c->write->ovlp;
         ngx_memzero(ovlp, sizeof(WSAOVERLAPPED));
