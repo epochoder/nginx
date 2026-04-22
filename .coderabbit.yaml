@@ -17,6 +17,9 @@ knowledge_base:
     usage: "enabled"
     team_keys:
       - "CS"
+  mcp:
+    usage: "enabled"
+
 chat:
   auto_reply: true
   integrations:
