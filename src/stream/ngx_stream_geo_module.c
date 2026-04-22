@@ -293,7 +293,7 @@ ngx_stream_geo_range_variable(ngx_stream_session_t *s,
     }
 
     if (ctx->u.high.low) {
-        range = ctx->u.high.low[inaddr >> 16];
+        range = ctx->u.high.low[inaddr & 0xffff];
 
         if (range) {
             n = inaddr & 0xffff;
