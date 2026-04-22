@@ -485,7 +485,7 @@ ngx_stream_upstream_find_chash_point(ngx_stream_upstream_chash_points_t *points,
     while (i < j) {
         k = (i + j) / 2;
 
-        if (hash > point[k].hash) {
+        if (hash >= point[k].hash) {
             i = k + 1;
 
         } else if (hash < point[k].hash) {
