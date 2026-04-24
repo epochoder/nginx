@@ -72,11 +72,11 @@ ngx_stream_write_filter(ngx_stream_session_t *s, ngx_chain_t *in,
     }
 
     if (from_upstream) {
-        c = s->connection;
+        c = s->upstream->peer.connection;
         out = &ctx->from_upstream;
 
     } else {
-        c = s->upstream->peer.connection;
+        c = s->connection;
         out = &ctx->from_downstream;
     }
 
