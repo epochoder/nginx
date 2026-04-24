@@ -289,10 +289,10 @@ ngx_stream_upstream_response_time_variable(ngx_stream_session_t *s,
 
     for ( ;; ) {
 
-        if (data == 1) {
+        if (data == 2) {
             ms = state[i].first_byte_time;
 
-        } else if (data == 2) {
+        } else if (data == 1) {
             ms = state[i].connect_time;
 
         } else {
