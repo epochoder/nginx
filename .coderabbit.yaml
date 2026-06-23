@@ -9,20 +9,3 @@ reviews:
   sequence_diagrams: true
   review_details: true
   assess_linked_issues: true
-  pre_merge_checks:
-    issue_assessment:
-      mode: "warning"
-
-knowledge_base:
-  linear:
-    usage: "enabled"
-    team_keys:
-      - "CS"
-  mcp:
-    usage: "enabled"
-
-chat:
-  auto_reply: true
-  integrations:
-    linear:
-      usage: "enabled"
