@@ -114,6 +114,20 @@ For a gentle introduction to NGINX basics, please see our [Beginner’s Guide](h
 ## Installing SSL certificates and enabling TLS encryption
 See [Configuring HTTPS servers](https://nginx.org/en/docs/http/configuring_https_servers.html) for a quick guide on how to enable secure traffic to your NGINX installation.
 
+A minimal HTTPS server should point to a certificate and private key on disk,
+and should prefer currently supported TLS protocol versions:
+
+```nginx
+server {
+    listen 443 ssl;
+    server_name example.com;
+
+    ssl_certificate     /etc/nginx/tls/example.crt;
+    ssl_certificate_key /etc/nginx/tls/example.crt;
+    ssl_protocols       TLSv1.2 TLSv1.3;
+}
+```
+
 ## Load Balancing
 For a quick start guide on configuring NGINX as a Load Balancer, please see [Using nginx as HTTP load balancer](https://nginx.org/en/docs/http/load_balancing.html).
 
