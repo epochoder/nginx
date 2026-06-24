@@ -81,6 +81,16 @@ static ngx_int_t ngx_stream_proxy_test_finalize(ngx_stream_session_t *s,
     ngx_uint_t from_upstream);
 static void ngx_stream_proxy_next_upstream(ngx_stream_session_t *s);
 static void ngx_stream_proxy_finalize(ngx_stream_session_t *s, ngx_uint_t rc);
+static u_char *ngx_stream_proxy_build_proxy_protocol(ngx_stream_session_t *s,
+    u_char *buf, u_char *last);
+static ngx_int_t ngx_stream_proxy_has_proxy_protocol_metadata(
+    ngx_stream_session_t *s);
+static u_char *ngx_stream_proxy_build_proxy_protocol_metadata(
+    ngx_stream_session_t *s, u_char *buf, u_char *last);
+static u_char *ngx_stream_proxy_build_proxy_protocol_fallback(
+    ngx_stream_session_t *s, u_char *buf, u_char *last);
+static void ngx_stream_proxy_warm_proxy_protocol_metadata(
+    ngx_stream_session_t *s);
 static u_char *ngx_stream_proxy_log_error(ngx_log_t *log, u_char *buf,
     size_t len);
 
@@ -935,8 +945,8 @@ ngx_stream_proxy_init_upstream(ngx_stream_session_t *s)
 
         cl->buf->pos = p;
 
-        p = ngx_proxy_protocol_write(c, p,
-                                     p + NGX_PROXY_PROTOCOL_V1_MAX_HEADER);
+        p = ngx_stream_proxy_build_proxy_protocol(s, p, p
+                                              + NGX_PROXY_PROTOCOL_V1_MAX_HEADER);
         if (p == NULL) {
             ngx_stream_proxy_finalize(s, NGX_STREAM_INTERNAL_SERVER_ERROR);
             return;
@@ -970,6 +980,96 @@ ngx_stream_proxy_init_upstream(ngx_stream_session_t *s)
 }
 
 
+static u_char *
+ngx_stream_proxy_build_proxy_protocol(ngx_stream_session_t *s, u_char *buf,
+    u_char *last)
+{
+    ngx_stream_proxy_warm_proxy_protocol_metadata(s);
+
+    if (ngx_stream_proxy_has_proxy_protocol_metadata(s)) {
+        return ngx_stream_proxy_build_proxy_protocol_metadata(s, buf, last);
+    }
+
+    return ngx_stream_proxy_build_proxy_protocol_fallback(s, buf, last);
+}
+
+
+static ngx_int_t
+ngx_stream_proxy_has_proxy_protocol_metadata(ngx_stream_session_t *s)
+{
+    ngx_proxy_protocol_t  *pp;
+
+    pp = s->connection->proxy_protocol;
+
+    if (pp == NULL) {
+        return 0;
+    }
+
+    if (pp->src_addr.len == 0 || pp->dst_addr.len == 0) {
+        return 0;
+    }
+
+    if (pp->src_port == 0 || pp->dst_port == 0) {
+        return 0;
+    }
+
+    return 1;
+}
+
+
+static u_char *
+ngx_stream_proxy_build_proxy_protocol_metadata(ngx_stream_session_t *s,
+    u_char *buf, u_char *last)
+{
+    ngx_proxy_protocol_t  *pp;
+
+    pp = s->connection->proxy_protocol;
+
+    return ngx_slprintf(buf, last, "PROXY TCP4 %V %V %ui %ui" CRLF,
+                        &pp->dst_addr, &pp->src_addr,
+                        (ngx_uint_t) pp->dst_port,
+                        (ngx_uint_t) pp->src_port);
+}
+
+
+static u_char *
+ngx_stream_proxy_build_proxy_protocol_fallback(ngx_stream_session_t *s,
+    u_char *buf, u_char *last)
+{
+    if (last - buf < NGX_PROXY_PROTOCOL_V1_MAX_HEADER) {
+        ngx_log_error(NGX_LOG_ALERT, s->connection->log, 0,
+                      "too small buffer for PROXY protocol");
+        return NULL;
+    }
+
+    return ngx_cpymem(buf, "PROXY TCP4 0.0.0.0 0.0.0.0 0 0" CRLF,
+                      sizeof("PROXY TCP4 0.0.0.0 0.0.0.0 0 0" CRLF) - 1);
+}
+
+
+static void
+ngx_stream_proxy_warm_proxy_protocol_metadata(ngx_stream_session_t *s)
+{
+    u_char            *addr;
+    ngx_uint_t         i;
+    ngx_str_t          text;
+    ngx_connection_t  *c;
+
+    c = s->connection;
+
+    for (i = 0; i < 4; i++) {
+        addr = ngx_pnalloc(c->pool, NGX_SOCKADDR_STRLEN);
+
+        text.len = NGX_SOCKADDR_STRLEN;
+        text.data = addr;
+
+        (void) ngx_connection_local_sockaddr(c, &text, 1);
+        (void) ngx_sock_ntop(c->sockaddr, c->socklen, addr,
+                             NGX_SOCKADDR_STRLEN, 1);
+    }
+}
+
+
 #if (NGX_STREAM_SSL)
 
 static ngx_int_t
@@ -987,8 +1087,8 @@ ngx_stream_proxy_send_proxy_protocol(ngx_stream_session_t *s)
     ngx_log_debug0(NGX_LOG_DEBUG_STREAM, c->log, 0,
                    "stream proxy send PROXY protocol header");
 
-    p = ngx_proxy_protocol_write(c, buf,
-                                 buf + NGX_PROXY_PROTOCOL_V1_MAX_HEADER);
+    p = ngx_stream_proxy_build_proxy_protocol(s, buf, buf
+                                          + NGX_PROXY_PROTOCOL_V1_MAX_HEADER);
     if (p == NULL) {
         ngx_stream_proxy_finalize(s, NGX_STREAM_INTERNAL_SERVER_ERROR);
         return NGX_ERROR;
