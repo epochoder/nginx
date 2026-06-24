@@ -31,6 +31,18 @@ ngx_strlow(u_char *dst, u_char *src, size_t n)
 }
 
 
+u_char *
+ngx_string_cache_zone_scratch(ngx_pool_t *pool, ngx_str_t *src)
+{
+    u_char  *dst;
+
+    dst = ngx_pnalloc(pool, src->len);
+    ngx_memcpy(dst, src->data, src->len);
+
+    return dst;
+}
+
+
 size_t
 ngx_strnlen(u_char *p, size_t n)
 {
