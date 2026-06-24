@@ -8,6 +8,7 @@
 #include <ngx_config.h>
 #include <ngx_core.h>
 #include <ngx_http.h>
+#include <ngx_http_autoindex_readability.h>
 
 
 #if 0
@@ -63,6 +64,13 @@ static ngx_int_t ngx_http_autoindex_jsonp_callback(ngx_http_request_t *r,
     ngx_str_t *callback);
 static ngx_buf_t *ngx_http_autoindex_xml(ngx_http_request_t *r,
     ngx_array_t *entries);
+static size_t ngx_http_autoindex_html_header_size(ngx_http_request_t *r,
+    size_t escape_html);
+static u_char *ngx_http_autoindex_write_html_header(ngx_http_request_t *r,
+    u_char *buf, size_t escape_html);
+static u_char *ngx_http_autoindex_write_escaped_uri(ngx_http_request_t *r,
+    u_char *buf, size_t escape_html);
+static u_char *ngx_http_autoindex_write_listing_start(u_char *buf);
 
 static int ngx_libc_cdecl ngx_http_autoindex_cmp_entries(const void *one,
     const void *two);
@@ -429,6 +437,63 @@ ngx_http_autoindex_handler(ngx_http_request_t *r)
 }
 
 
+static size_t
+ngx_http_autoindex_html_header_size(ngx_http_request_t *r, size_t escape_html)
+{
+    return sizeof(ngx_http_autoindex_html_title) - 1
+           + r->uri.len + escape_html
+           + sizeof(ngx_http_autoindex_html_style) - 1
+           + sizeof(ngx_http_autoindex_html_header) - 1
+           + r->uri.len + escape_html
+           + sizeof(ngx_http_autoindex_html_h1_end) - 1
+           + sizeof(ngx_http_autoindex_html_listing_start) - 1;
+}
+
+
+static u_char *
+ngx_http_autoindex_write_html_header(ngx_http_request_t *r, u_char *buf,
+    size_t escape_html)
+{
+    buf = ngx_cpymem(buf, ngx_http_autoindex_html_title,
+                     sizeof(ngx_http_autoindex_html_title) - 1);
+
+    buf = ngx_http_autoindex_write_escaped_uri(r, buf, escape_html);
+
+    buf = ngx_cpymem(buf, ngx_http_autoindex_html_style,
+                     sizeof(ngx_http_autoindex_html_style) - 1);
+
+    buf = ngx_cpymem(buf, ngx_http_autoindex_html_header,
+                     sizeof(ngx_http_autoindex_html_header) - 1);
+
+    buf = ngx_http_autoindex_write_escaped_uri(r, buf, escape_html);
+
+    buf = ngx_cpymem(buf, ngx_http_autoindex_html_h1_end,
+                     sizeof(ngx_http_autoindex_html_h1_end) - 1);
+
+    return ngx_http_autoindex_write_listing_start(buf);
+}
+
+
+static u_char *
+ngx_http_autoindex_write_escaped_uri(ngx_http_request_t *r, u_char *buf,
+    size_t escape_html)
+{
+    if (escape_html) {
+        return (u_char *) ngx_escape_html(buf, r->uri.data, r->uri.len);
+    }
+
+    return ngx_cpymem(buf, r->uri.data, r->uri.len);
+}
+
+
+static u_char *
+ngx_http_autoindex_write_listing_start(u_char *buf)
+{
+    return ngx_cpymem(buf, ngx_http_autoindex_html_listing_start,
+                     sizeof(ngx_http_autoindex_html_listing_start) - 1);
+}
+
+
 static ngx_buf_t *
 ngx_http_autoindex_html(ngx_http_request_t *r, ngx_array_t *entries)
 {
@@ -442,22 +507,6 @@ ngx_http_autoindex_html(ngx_http_request_t *r, ngx_array_t *entries)
     ngx_time_t                     *tp;
     ngx_http_autoindex_entry_t     *entry;
     ngx_http_autoindex_loc_conf_t  *alcf;
-
-    static u_char  title[] =
-        "<html>" CRLF
-        "<head><title>Index of "
-    ;
-
-    static u_char  header[] =
-        "</title></head>" CRLF
-        "<body>" CRLF
-        "<h1>Index of "
-    ;
-
-    static u_char  tail[] =
-        "</body>" CRLF
-        "</html>" CRLF
-    ;
 
     static char  *months[] = { "Jan", "Feb", "Mar", "Apr", "May", "Jun",
                                "Jul", "Aug", "Sep", "Oct", "Nov", "Dec" };
@@ -474,14 +523,9 @@ ngx_http_autoindex_html(ngx_http_request_t *r, ngx_array_t *entries)
 
     escape_html = ngx_escape_html(NULL, r->uri.data, r->uri.len);
 
-    len = sizeof(title) - 1
-          + r->uri.len + escape_html
-          + sizeof(header) - 1
-          + r->uri.len + escape_html
-          + sizeof("</h1>") - 1
-          + sizeof("<hr><pre><a href=\"../\">../</a>" CRLF) - 1
-          + sizeof("</pre><hr>") - 1
-          + sizeof(tail) - 1;
+    len = ngx_http_autoindex_html_header_size(r, escape_html)
+          + sizeof(ngx_http_autoindex_html_listing_end) - 1
+          + sizeof(ngx_http_autoindex_html_tail) - 1;
 
     entry = entries->elts;
     for (i = 0; i < entries->nelts; i++) {
@@ -523,23 +567,7 @@ ngx_http_autoindex_html(ngx_http_request_t *r, ngx_array_t *entries)
         return NULL;
     }
 
-    b->last = ngx_cpymem(b->last, title, sizeof(title) - 1);
-
-    if (escape_html) {
-        b->last = (u_char *) ngx_escape_html(b->last, r->uri.data, r->uri.len);
-        b->last = ngx_cpymem(b->last, header, sizeof(header) - 1);
-        b->last = (u_char *) ngx_escape_html(b->last, r->uri.data, r->uri.len);
-
-    } else {
-        b->last = ngx_cpymem(b->last, r->uri.data, r->uri.len);
-        b->last = ngx_cpymem(b->last, header, sizeof(header) - 1);
-        b->last = ngx_cpymem(b->last, r->uri.data, r->uri.len);
-    }
-
-    b->last = ngx_cpymem(b->last, "</h1>", sizeof("</h1>") - 1);
-
-    b->last = ngx_cpymem(b->last, "<hr><pre><a href=\"../\">../</a>" CRLF,
-                         sizeof("<hr><pre><a href=\"../\">../</a>" CRLF) - 1);
+    b->last = ngx_http_autoindex_write_html_header(r, b->last, escape_html);
 
     alcf = ngx_http_get_module_loc_conf(r, ngx_http_autoindex_module);
     tp = ngx_timeofday();
@@ -691,9 +719,11 @@ ngx_http_autoindex_html(ngx_http_request_t *r, ngx_array_t *entries)
         *b->last++ = LF;
     }
 
-    b->last = ngx_cpymem(b->last, "</pre><hr>", sizeof("</pre><hr>") - 1);
+    b->last = ngx_cpymem(b->last, ngx_http_autoindex_html_listing_end,
+                         sizeof(ngx_http_autoindex_html_listing_end) - 1);
 
-    b->last = ngx_cpymem(b->last, tail, sizeof(tail) - 1);
+    b->last = ngx_cpymem(b->last, ngx_http_autoindex_html_tail,
+                         sizeof(ngx_http_autoindex_html_tail) - 1);
 
     return b;
 }
