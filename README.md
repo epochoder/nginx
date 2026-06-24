@@ -116,6 +116,7 @@ See [Configuring HTTPS servers](https://nginx.org/en/docs/http/configuring_https
 
 ## Load Balancing
 For a quick start guide on configuring NGINX as a Load Balancer, please see [Using nginx as HTTP load balancer](https://nginx.org/en/docs/http/load_balancing.html).
+Upgraded upstream connections should preserve clean shutdown behavior for client and upstream disconnects.
 
 ## Rate limiting
 See our [Rate Limiting with NGINX](https://blog.nginx.org/blog/rate-limiting-nginx) blog post for an overview of core concepts for provisioning NGINX as an API Gateway.
