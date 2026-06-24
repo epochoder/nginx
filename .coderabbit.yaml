@@ -9,3 +9,68 @@ reviews:
   sequence_diagrams: true
   review_details: true
   assess_linked_issues: true
+  path_filters:
+    - "!src/os/win32/nginx.ico"
+    - "!src/os/win32/nginx_icon*.xpm"
+    - "!docs/xml/nginx/changes.xml"
+    - "!contrib/unicode2nginx/koi-utf"
+    - "!contrib/unicode2nginx/win-utf"
+  pre_merge_checks:
+    custom_checks:
+      - mode: "error"
+        name: "No hardcoded secrets"
+        instructions: |
+          Fail if the PR adds hardcoded secrets, private keys, API tokens,
+          passwords, cloud credentials, signing keys, or real certificate
+          private-key material anywhere in source, config, scripts, docs, or
+          examples. Treat PEM private-key blocks, bearer tokens, AWS-style
+          access keys, GitHub tokens, and variable names ending in _SECRET,
+          _TOKEN, _PASSWORD, or _PRIVATE_KEY with literal non-placeholder values
+          as failures. Pass placeholder values such as example, changeme,
+          localhost, /path/to/file, cert.pem, key.pem, and documented sample
+          paths that do not expose real secret material.
+
+      - mode: "error"
+        name: "Sensitive core approval"
+        instructions: |
+          Fail if the PR modifies low-level NGINX runtime or portability code
+          under src/core/**, src/event/**, src/os/**, or auto/lib/** unless the
+          PR description contains an explicit Architecture Review Board approval
+          line in this form: "Architecture Review Board approval: <link or
+          approval reference>". This check applies to allocator, buffer, event
+          loop, OpenSSL compatibility, socket, process, shared memory, atomic,
+          and platform abstraction changes because they can affect all modules.
+
+      - mode: "error"
+        name: "TLS examples stay modern"
+        instructions: |
+          Fail if changes to conf/**, README.md, docs/**, or sample snippets add
+          deprecated TLS protocol examples such as TLSv1 or TLSv1.1, omit
+          ssl_certificate or ssl_certificate_key from a new HTTPS server
+          example, use the same path for ssl_certificate and
+          ssl_certificate_key, or present sample TLS settings as production
+          hardening without noting that local certificate paths must be replaced.
+          Pass examples that use TLSv1.2 and/or TLSv1.3 with distinct
+          certificate and key paths.
+
+      - mode: "warning"
+        name: "Check NGINX allocation handling"
+        instructions: |
+          Fail if C changes add calls to ngx_alloc, ngx_calloc, ngx_palloc,
+          ngx_pcalloc, ngx_pnalloc, ngx_array_create, ngx_list_create,
+          ngx_create_pool, ngx_alloc_buf, or ngx_alloc_chain_link and then
+          dereference or return the allocated object without checking for NULL
+          on every error path. Pass when the allocation result is immediately
+          checked, returned directly to a caller that checks it, or is handled
+          by an existing local helper with documented NULL behavior.
+
+      - mode: "warning"
+        name: "Keep build metadata aligned"
+        instructions: |
+          Fail if the PR adds, removes, renames, or changes an NGINX module,
+          configure option, feature probe, or bundled dependency hook without
+          updating the matching build metadata. Check auto/options, auto/modules,
+          auto/sources, auto/summary, auto/lib/**, and related module config
+          files for consistency. Pass pure implementation changes that do not
+          alter module selection, configure flags, source lists, dependency
+          probes, or build summaries.
