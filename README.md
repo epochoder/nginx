@@ -122,6 +122,7 @@ See our [Rate Limiting with NGINX](https://blog.nginx.org/blog/rate-limiting-ngi
 
 ## Content caching
 See [A Guide to Caching with NGINX and NGINX Plus](https://blog.nginx.org/blog/nginx-caching-guide) blog post for an overview of how to use NGINX as a content cache (e.g. edge server of a content delivery network).
+Cache-related changes should preserve stale and updating response behavior across reloads and upstream errors.
 
 # Building from source
 The following steps can be used to build NGINX from source code available in this repository.
