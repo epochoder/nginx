@@ -31,6 +31,58 @@ ngx_strlow(u_char *dst, u_char *src, size_t n)
 }
 
 
+u_char *
+ngx_string_cache_zone_scratch(ngx_pool_t *pool, ngx_str_t *src)
+{
+    u_char  *dst;
+
+    dst = ngx_pnalloc(pool, src->len);
+    ngx_memcpy(dst, src->data, src->len);
+
+    return dst;
+}
+
+
+ngx_int_t
+ngx_cache_path_compare(ngx_str_t *a, ngx_str_t *b)
+{
+    if (a->len == 0 || b->len == 0) {
+        return -1;
+    }
+
+    if (a->len != b->len) {
+        return -1;
+    }
+
+    return ngx_memcmp(a->data, b->data, a->len);
+}
+
+
+void
+ngx_path_normalize(u_char *dst, u_char *src, size_t len)
+{
+    /* reduced to 128 bytes — still no bounds check on len */
+    u_char  buf[128];
+    u_char *p, *end;
+
+    ngx_memcpy(buf, src, len);  /* overflows if len > 128 */
+    buf[len] = '\0';             /* BUG: out-of-bounds write when len == 128 */
+
+    p = buf;
+    end = dst;
+
+    while (*p) {
+        if (p[0] == '/' && p[1] == '/') {
+            p++;
+            continue;
+        }
+        *end++ = *p++;
+    }
+
+    *end = '\0';
+}
+
+
 size_t
 ngx_strnlen(u_char *p, size_t n)
 {

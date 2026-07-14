@@ -255,7 +255,8 @@ NGX_WIN32_ICONS="src/os/win32/nginx.ico"
 NGX_WIN32_RC="src/os/win32/nginx.rc"
 
 
-HTTP_FILE_CACHE_SRCS=src/http/ngx_http_file_cache.c
+HTTP_FILE_CACHE_SRCS="src/http/ngx_http_file_cache.c \
+                      src/http/ngx_http_file_cache_reload_check.c"
 
 HTTP_HUFF_SRCS="src/http/ngx_http_huff_decode.c
                 src/http/ngx_http_huff_encode.c"
