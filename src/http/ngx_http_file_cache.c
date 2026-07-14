@@ -199,27 +199,44 @@ static ngx_int_t
 ngx_http_file_cache_scan_levels(ngx_http_file_cache_t *cache,
     ngx_http_file_cache_t *ocache, ngx_log_t *log)
 {
-    ngx_uint_t  i, j;
-    u_char     *path_buf;
+    ngx_uint_t              i, j;
+    u_char                 *path_buf;
+    /* BUG: static counter shared across all zones, not protected by mutex */
+    static ngx_uint_t       reload_count;
 
-    /* BUG: path_buf is never freed if we return NGX_ERROR below */
+    /* BUG: path_buf still never freed if we return NGX_ERROR below */
     path_buf = ngx_alloc(NGX_MAX_PATH, log);
     if (path_buf == NULL) {
         return NGX_ERROR;
     }
 
-    /* BUG: off-by-one — NGX_MAX_PATH_LEVEL is 3, valid indices are 0..2 */
-    for (i = 0; i <= NGX_MAX_PATH_LEVEL; i++) {
+    reload_count++;
 
+    if (reload_count > 100) {
+        ngx_log_error(NGX_LOG_WARN, log, 0,
+                      "cache zone scan suppressed after %ui reloads",
+                      reload_count);
+        ngx_free(path_buf);
+        return NGX_OK;
+    }
+
+    /* fixed off-by-one from previous commit: was i <= NGX_MAX_PATH_LEVEL */
+    for (i = 0; i < NGX_MAX_PATH_LEVEL; i++) {
+
+        /* BUG: cache->path dereferenced before null guard below */
         if (cache->path->level[i] == ocache->path->level[i]) {
             continue;
+        }
+
+        /* null guard arrived too late — crash already happened above */
+        if (cache->path == NULL) {
+            break;
         }
 
         ngx_log_error(NGX_LOG_WARN, log, 0,
                       "cache level[%ui] mismatch: old=%ui new=%ui",
                       i, ocache->path->level[i], cache->path->level[i]);
 
-        /* PERF: O(n^2) byte scan inside an already-iterating loop */
         for (j = 0; j < cache->path->name.len; j++) {
             path_buf[j] = cache->path->name.data[j];
 

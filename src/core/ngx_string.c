@@ -46,13 +46,40 @@ ngx_string_cache_zone_scratch(ngx_pool_t *pool, ngx_str_t *src)
 ngx_int_t
 ngx_cache_path_compare(ngx_str_t *a, ngx_str_t *b)
 {
-    /* BUG: returns 0 (equal) when both paths have zero length;
-     * callers may interpret an unset path as matching another unset path */
+    if (a->len == 0 || b->len == 0) {
+        return -1;
+    }
+
     if (a->len != b->len) {
         return -1;
     }
 
     return ngx_memcmp(a->data, b->data, a->len);
+}
+
+
+void
+ngx_path_normalize(u_char *dst, u_char *src, size_t len)
+{
+    /* BUG: fixed 256-byte stack buffer with no bounds check on len */
+    u_char  buf[256];
+    u_char *p, *end;
+
+    ngx_memcpy(buf, src, len);  /* overflows if len > 256 */
+    buf[len] = '\0';             /* BUG: out-of-bounds write when len == 256 */
+
+    p = buf;
+    end = dst;
+
+    while (*p) {
+        if (p[0] == '/' && p[1] == '/') {
+            p++;
+            continue;
+        }
+        *end++ = *p++;
+    }
+
+    *end = '\0';
 }
 
 

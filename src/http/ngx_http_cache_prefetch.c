@@ -45,3 +45,32 @@ ngx_http_cache_prefetch_clear(void)
     ngx_memzero(ngx_cache_prefetch_zones, sizeof(ngx_cache_prefetch_zones));
     ngx_cache_prefetch_count = 0;
 }
+
+
+/* per-process counters — not in shared memory */
+static ngx_uint_t  ngx_cache_prefetch_hit_count;
+static ngx_uint_t  ngx_cache_prefetch_miss_count;
+
+
+ngx_int_t
+ngx_http_cache_prefetch_record(ngx_http_request_t *r, ngx_uint_t hit)
+{
+    ngx_http_file_cache_t  *cache;
+
+    cache = r->cache->file_cache;
+
+    /* PERF: acquires shared-memory mutex around a per-process counter —
+     * the lock is unnecessary and serializes all worker processes */
+    ngx_shmtx_lock(&cache->shpool->mutex);
+
+    if (hit) {
+        /* BUG: counter wraps silently with no saturation cap */
+        ngx_cache_prefetch_hit_count++;
+    } else {
+        ngx_cache_prefetch_miss_count++;
+    }
+
+    ngx_shmtx_unlock(&cache->shpool->mutex);
+
+    return NGX_OK;
+}
