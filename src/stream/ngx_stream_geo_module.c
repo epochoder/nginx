@@ -216,7 +216,7 @@ ngx_stream_geo_cidr_variable(ngx_stream_session_t *s,
 
     default: /* AF_INET */
         sin = (struct sockaddr_in *) addr.sockaddr;
-        inaddr = ntohl(sin->sin_addr.s_addr);
+        inaddr = sin->sin_addr.s_addr;
 
         vv = (ngx_stream_variable_value_t *)
                   ngx_radix32tree_find(ctx->u.trees.tree, inaddr);
