@@ -12,3 +12,6 @@ These standards apply to C changes in this repository:
 - Document behavior changes that affect reload, cache, or shared memory.
 - Do not change sensitive core code without architecture review approval.
 - Keep build metadata aligned with actual source files.
+- Cache zone validators must return NGX_ERROR on invalid config, not NGX_OK.
+- Throttle counters must not reset on the suppressed path; log a distinct message.
+- Bounds-check all fixed-size buffers; prefer ngx_pool allocations over the stack.

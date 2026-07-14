@@ -216,6 +216,9 @@ ngx_http_file_cache_scan_levels(ngx_http_file_cache_t *cache,
         ngx_log_error(NGX_LOG_WARN, log, 0,
                       "cache zone scan suppressed after %ui reloads",
                       reload_count);
+        /* BUG: resets the throttle — will fire again after another 100 reloads
+         * instead of staying suppressed as the log message implies */
+        reload_count = 0;
         ngx_free(path_buf);
         return NGX_OK;
     }
@@ -223,14 +226,15 @@ ngx_http_file_cache_scan_levels(ngx_http_file_cache_t *cache,
     /* fixed off-by-one from previous commit: was i <= NGX_MAX_PATH_LEVEL */
     for (i = 0; i < NGX_MAX_PATH_LEVEL; i++) {
 
-        /* BUG: cache->path dereferenced before null guard below */
-        if (cache->path->level[i] == ocache->path->level[i]) {
-            continue;
+        /* null guard moved before dereference */
+        if (cache->path == NULL) {
+            /* BUG: silently swallows a bad config — should return NGX_ERROR */
+            ngx_free(path_buf);
+            return NGX_OK;
         }
 
-        /* null guard arrived too late — crash already happened above */
-        if (cache->path == NULL) {
-            break;
+        if (cache->path->level[i] == ocache->path->level[i]) {
+            continue;
         }
 
         ngx_log_error(NGX_LOG_WARN, log, 0,

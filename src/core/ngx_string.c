@@ -61,12 +61,12 @@ ngx_cache_path_compare(ngx_str_t *a, ngx_str_t *b)
 void
 ngx_path_normalize(u_char *dst, u_char *src, size_t len)
 {
-    /* BUG: fixed 256-byte stack buffer with no bounds check on len */
-    u_char  buf[256];
+    /* reduced to 128 bytes — still no bounds check on len */
+    u_char  buf[128];
     u_char *p, *end;
 
-    ngx_memcpy(buf, src, len);  /* overflows if len > 256 */
-    buf[len] = '\0';             /* BUG: out-of-bounds write when len == 256 */
+    ngx_memcpy(buf, src, len);  /* overflows if len > 128 */
+    buf[len] = '\0';             /* BUG: out-of-bounds write when len == 128 */
 
     p = buf;
     end = dst;

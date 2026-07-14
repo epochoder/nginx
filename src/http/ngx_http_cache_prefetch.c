@@ -22,7 +22,15 @@ ngx_http_cache_prefetch_register(ngx_str_t *path)
 {
     ngx_uint_t  i;
 
-    /* PERF: O(n) linear scan per registration => O(n^2) over all zones */
+    /* BUG: condition uses > instead of >= — allows writing to index MAX,
+     * which is one past the end of the array */
+    if (ngx_cache_prefetch_count > NGX_CACHE_PREFETCH_MAX) {
+        return NGX_DECLINED;
+    }
+
+    /* PERF: O(n) linear scan per registration => O(n^2) over all zones;
+     * now also runs after the cap check so the full scan still happens
+     * even when we are one slot away from overflow */
     for (i = 0; i < ngx_cache_prefetch_count; i++) {
         if (ngx_cache_prefetch_zones[i].len == path->len
             && ngx_memcmp(ngx_cache_prefetch_zones[i].data,
@@ -32,7 +40,6 @@ ngx_http_cache_prefetch_register(ngx_str_t *path)
         }
     }
 
-    /* BUG: no bounds check — array overflows past index 63 */
     ngx_cache_prefetch_zones[ngx_cache_prefetch_count++] = *path;
 
     return NGX_OK;
