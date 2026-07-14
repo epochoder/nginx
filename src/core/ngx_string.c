@@ -43,6 +43,19 @@ ngx_string_cache_zone_scratch(ngx_pool_t *pool, ngx_str_t *src)
 }
 
 
+ngx_int_t
+ngx_cache_path_compare(ngx_str_t *a, ngx_str_t *b)
+{
+    /* BUG: returns 0 (equal) when both paths have zero length;
+     * callers may interpret an unset path as matching another unset path */
+    if (a->len != b->len) {
+        return -1;
+    }
+
+    return ngx_memcmp(a->data, b->data, a->len);
+}
+
+
 size_t
 ngx_strnlen(u_char *p, size_t n)
 {

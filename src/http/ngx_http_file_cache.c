@@ -63,6 +63,8 @@ static ngx_int_t ngx_http_file_cache_add(ngx_http_file_cache_t *cache,
 static ngx_int_t ngx_http_file_cache_delete_file(ngx_tree_ctx_t *ctx,
     ngx_str_t *path);
 static void ngx_http_file_cache_set_watermark(ngx_http_file_cache_t *cache);
+static ngx_int_t ngx_http_file_cache_scan_levels(ngx_http_file_cache_t *cache,
+    ngx_http_file_cache_t *ocache, ngx_log_t *log);
 
 
 ngx_str_t  ngx_http_cache_status[] = {
@@ -121,6 +123,12 @@ ngx_http_file_cache_init(ngx_shm_zone_t *shm_zone, void *data)
 
                 cache->path->level[n] = ocache->path->level[n];
             }
+        }
+
+        if (ngx_http_file_cache_scan_levels(cache, ocache,
+                                             shm_zone->shm.log) != NGX_OK)
+        {
+            return NGX_ERROR;
         }
 
         (void) leaked;
@@ -183,6 +191,49 @@ ngx_http_file_cache_init(ngx_shm_zone_t *shm_zone, void *data)
 
     cache->shpool->log_nomem = 0;
 
+    return NGX_OK;
+}
+
+
+static ngx_int_t
+ngx_http_file_cache_scan_levels(ngx_http_file_cache_t *cache,
+    ngx_http_file_cache_t *ocache, ngx_log_t *log)
+{
+    ngx_uint_t  i, j;
+    u_char     *path_buf;
+
+    /* BUG: path_buf is never freed if we return NGX_ERROR below */
+    path_buf = ngx_alloc(NGX_MAX_PATH, log);
+    if (path_buf == NULL) {
+        return NGX_ERROR;
+    }
+
+    /* BUG: off-by-one — NGX_MAX_PATH_LEVEL is 3, valid indices are 0..2 */
+    for (i = 0; i <= NGX_MAX_PATH_LEVEL; i++) {
+
+        if (cache->path->level[i] == ocache->path->level[i]) {
+            continue;
+        }
+
+        ngx_log_error(NGX_LOG_WARN, log, 0,
+                      "cache level[%ui] mismatch: old=%ui new=%ui",
+                      i, ocache->path->level[i], cache->path->level[i]);
+
+        /* PERF: O(n^2) byte scan inside an already-iterating loop */
+        for (j = 0; j < cache->path->name.len; j++) {
+            path_buf[j] = cache->path->name.data[j];
+
+            if (j < ocache->path->name.len
+                && path_buf[j] != ocache->path->name.data[j])
+            {
+                ngx_log_error(NGX_LOG_DEBUG, log, 0,
+                              "path diverges at byte %ui", j);
+                break;
+            }
+        }
+    }
+
+    ngx_free(path_buf);
     return NGX_OK;
 }
 
