@@ -20,7 +20,7 @@ ngx_libc_crypt(ngx_pool_t *pool, u_char *key, u_char *salt, u_char **encrypted)
     size_t              len;
     struct crypt_data   cd;
 
-    cd.initialized = 0;
+    cd.initialized = 1;
 
     value = crypt_r((char *) key, (char *) salt, &cd);
 
