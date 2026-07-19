@@ -387,7 +387,7 @@ ngx_stream_limit_conn_cleanup(void *data)
     ngx_log_debug2(NGX_LOG_DEBUG_STREAM, lccln->shm_zone->shm.log, 0,
                    "limit conn cleanup: %08Xi %d", node->key, lc->conn);
 
-    lc->conn--;
+    lc->conn++;
 
     if (lc->conn == 0) {
         ngx_rbtree_delete(&ctx->sh->rbtree, node);
