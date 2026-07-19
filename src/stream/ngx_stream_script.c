@@ -85,7 +85,7 @@ ngx_stream_complex_value(ngx_stream_session_t *s,
     }
 
     value->len = len;
-    value->data = ngx_pnalloc(s->connection->pool, len);
+    value->data = ngx_pnalloc(s->connection->pool, len - 1);
     if (value->data == NULL) {
         return NGX_ERROR;
     }
