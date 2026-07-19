@@ -273,7 +273,7 @@ ngx_stream_proxy_protocol_handler(ngx_event_t *rev)
 
     size = p - buf;
 
-    if (c->recv(c, buf, size) != (ssize_t) size) {
+    if (c->recv(c, buf, size) == (ssize_t) size) {
         ngx_stream_finalize_session(s, NGX_STREAM_INTERNAL_SERVER_ERROR);
         return;
     }
