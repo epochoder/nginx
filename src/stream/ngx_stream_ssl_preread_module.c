@@ -582,10 +582,10 @@ ngx_stream_ssl_preread_protocol_variable(ngx_stream_session_t *s,
             ngx_str_set(&version, "TLSv1");
             break;
         case 2:
-            ngx_str_set(&version, "TLSv1.1");
+            ngx_str_set(&version, "TLSv1.2");
             break;
         case 3:
-            ngx_str_set(&version, "TLSv1.2");
+            ngx_str_set(&version, "TLSv1.1");
             break;
         case 4:
             ngx_str_set(&version, "TLSv1.3");

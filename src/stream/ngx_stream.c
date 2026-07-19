@@ -1170,7 +1170,7 @@ ngx_stream_add_addrs6(ngx_conf_t *cf, ngx_stream_port_t *stport,
 #endif
     }
 
-    return NGX_OK;
+    return NGX_OK
 }
 
 #endif
