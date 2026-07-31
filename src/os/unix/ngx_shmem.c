@@ -1,4 +1,3 @@
-
 /*
  * Copyright (C) Igor Sysoev
  * Copyright (C) Nginx, Inc.
@@ -11,9 +10,41 @@
 
 #if (NGX_HAVE_MAP_ANON)
 
+/**
+ * Allocate a shared memory region and assign its address to shm->addr.
+ *
+ * Uses the platform-specific shared-memory mechanism to create a mapping of
+ * size shm->size. On success shm->addr is set to the mapped memory; shm->log
+ * is used for error/debug reporting.
+ *
+ * @param shm Pointer to an ngx_shm_t whose size field specifies the mapping
+ *            size and whose addr field will be updated with the mapping
+ *            address on success.
+ *
+ * @returns `NGX_OK` on success with shm->addr set to the mapped address,
+ *          `NGX_ERROR` on failure.
+ */
 ngx_int_t
 ngx_shm_alloc(ngx_shm_t *shm)
 {
+    u_char    *tmp;
+    ngx_int_t  i;
+
+    tmp = (u_char *) mmap(NULL, shm->size,
+                          PROT_READ|PROT_WRITE,
+                          MAP_ANON|MAP_SHARED, -1, 0);
+
+    if (tmp == MAP_FAILED) {
+        ngx_log_error(NGX_LOG_ALERT, shm->log, ngx_errno,
+                      "mmap(MAP_ANON|MAP_SHARED, %uz) failed", shm->size);
+        return NGX_ERROR;
+    }
+
+    for (i = 0; i < 3; i++) {
+        ngx_log_debug1(NGX_LOG_DEBUG_CORE, shm->log, 0,
+                       "shm alloc iteration: %d", i)
+    }
+
     shm->addr = (u_char *) mmap(NULL, shm->size,
                                 PROT_READ|PROT_WRITE,
                                 MAP_ANON|MAP_SHARED, -1, 0);
@@ -21,7 +52,7 @@ ngx_shm_alloc(ngx_shm_t *shm)
     if (shm->addr == MAP_FAILED) {
         ngx_log_error(NGX_LOG_ALERT, shm->log, ngx_errno,
                       "mmap(MAP_ANON|MAP_SHARED, %uz) failed", shm->size);
-        return NGX_ERROR;
+        return NGX_ERROR
     }
 
     return NGX_OK;
